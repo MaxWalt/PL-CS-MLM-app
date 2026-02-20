@@ -14,10 +14,16 @@ information across ~52,000 athletes), but is the natural approach for a
 single athlete entering their own race times.
 """
 
-import streamlit as st
+import json
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
+from plotly.subplots import make_subplots
+from scipy import stats
+from scipy.interpolate import interp1d
+import streamlit as st
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
@@ -42,6 +48,8 @@ DIST_LABELS = {
     5000: "5000 m",
     10000: "10,000 m",
 }
+
+APP_DIR = Path(__file__).parent
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Time helpers
@@ -165,6 +173,71 @@ def mare(actual, predicted) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
+# WA scoring (lookup-table interpolation)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@st.cache_data
+def load_wa_lookup() -> dict:
+    path = APP_DIR / "wa_lookup.json"
+    if not path.exists():
+        return {}
+    with open(path) as f:
+        return json.load(f)
+
+
+def get_wa_points(gender: str, distance: int, time_s: float) -> float | None:
+    """
+    Return WA points for a (gender, distance, time) triple using linear
+    interpolation over the empirical scoring table derived from MDLD_speed.
+    Returns None if lookup data is unavailable.
+    """
+    lookup = load_wa_lookup()
+    data = lookup.get(gender, {}).get(str(distance))
+    if not data:
+        return None
+
+    t_arr = np.array(data["times"])
+    p_arr = np.array(data["pts"])
+
+    if time_s > t_arr.max():
+        return 0.0                      # slower than the slowest scored performance
+
+    if time_s < t_arr.min():
+        # Extrapolate linearly above the dataset maximum (world-record territory)
+        f = interp1d(t_arr[:2], p_arr[:2], fill_value="extrapolate")
+        return max(0.0, float(f(time_s)))
+
+    f = interp1d(t_arr, p_arr, kind="linear")
+    return float(f(time_s))
+
+
+def detect_best_event(gender: str, inputs: dict[int, float]) -> tuple[int, float] | None:
+    """
+    Return (best_distance, wa_points) — the distance where the athlete scored
+    highest WA points.  Returns None if no WA data is available.
+    """
+    best_d, best_pts = None, -1.0
+    for d, t in inputs.items():
+        pts = get_wa_points(gender, d, t)
+        if pts is not None and pts > best_pts:
+            best_pts = pts
+            best_d = d
+    return (best_d, best_pts) if best_d is not None else None
+
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Population data
+# ─────────────────────────────────────────────────────────────────────────────
+
+@st.cache_data
+def load_population() -> pd.DataFrame | None:
+    path = APP_DIR / "population_params.csv"
+    if not path.exists():
+        return None
+    return pd.read_csv(path)
+
+
+# ─────────────────────────────────────────────────────────────────────────────
 # App: header
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -173,17 +246,29 @@ st.markdown(
     "Enter your personal bests for **at least 2 distances**. "
     "The app fits the **Power Law (PL)** and **Critical Speed (CS)** models "
     "to your data and returns individual physiological parameters, "
-    "performance predictions for all standard distances, and a "
-    "speed–duration profile.\n\n"
+    "performance predictions for all standard distances, a "
+    "speed–duration profile, and your **population context** "
+    "(where you stand among ~52,000 athletes of the same gender and event specialization).\n\n"
     "> Based on the MLM modeling framework from Waltenspül et al. (2024–2025)."
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
-# Sidebar: personal best inputs
+# Sidebar: gender + personal best inputs
 # ─────────────────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.header("Your Personal Bests")
+    st.header("Your Profile")
+
+    gender = st.radio(
+        "Gender",
+        options=["Male", "Female"],
+        horizontal=True,
+        help="Used to determine your World Athletics points and match you to the correct population group.",
+    )
+
+    st.divider()
+
+    st.subheader("Personal Bests")
     st.caption(
         "Format: `m:ss` or `m:ss.xx`  \n"
         "Examples: `1:45.50`, `3:32`, `14:06.92`  \n"
@@ -194,6 +279,7 @@ with st.sidebar:
         val = st.text_input(DIST_LABELS[d], key=str(d), placeholder="e.g. 1:45.50")
         if val.strip():
             raw_inputs[d] = val.strip()
+
     st.divider()
     st.caption("📖 Waltenspül et al. — *CS vs PL paper*, 2024–2025")
 
@@ -219,6 +305,18 @@ if len(inputs) < 2:
 distances_in = np.array(sorted(inputs.keys()), dtype=float)
 times_in = np.array([inputs[int(d)] for d in distances_in], dtype=float)
 speeds_in = distances_in / times_in
+
+# ─────────────────────────────────────────────────────────────────────────────
+# WA points + best event
+# ─────────────────────────────────────────────────────────────────────────────
+
+wa_pts_user: dict[int, float | None] = {
+    d: get_wa_points(gender, d, t) for d, t in inputs.items()
+}
+best_event_result = detect_best_event(gender, inputs)
+best_event_dist = best_event_result[0] if best_event_result else None
+best_event_pts  = best_event_result[1] if best_event_result else None
+best_event_str  = str(best_event_dist) if best_event_dist else "unknown"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fit models
@@ -256,11 +354,40 @@ if not (0 < pl["b"] < 2):
     )
 
 # ─────────────────────────────────────────────────────────────────────────────
+# WA points summary bar (shown above tabs)
+# ─────────────────────────────────────────────────────────────────────────────
+
+if any(v is not None for v in wa_pts_user.values()):
+    st.subheader("World Athletics Points & Event Profile")
+
+    wa_cols = st.columns(len(inputs) + 1)
+    for i, (d, t) in enumerate(sorted(inputs.items())):
+        pts = wa_pts_user.get(d)
+        pts_str = f"{pts:.0f}" if pts is not None else "—"
+        delta = "⭐ best" if d == best_event_dist else None
+        wa_cols[i].metric(
+            label=DIST_LABELS[d],
+            value=pts_str,
+            delta=delta,
+            delta_color="off",
+        )
+
+    if best_event_dist:
+        wa_cols[-1].metric(
+            label="🎯 Best event",
+            value=DIST_LABELS[best_event_dist],
+            delta=f"{best_event_pts:.0f} pts",
+            delta_color="off",
+        )
+
+    st.divider()
+
+# ─────────────────────────────────────────────────────────────────────────────
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
 
-tab_params, tab_preds, tab_plot = st.tabs(
-    ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile"]
+tab_params, tab_preds, tab_plot, tab_pop = st.tabs(
+    ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile", "👥 Population Context"]
 )
 
 # ── Tab 1: Parameters ─────────────────────────────────────────────────────────
@@ -317,7 +444,7 @@ with tab_params:
     st.caption(
         "Parameters are estimated by direct OLS curve-fitting to your personal bests. "
         "This differs from the population MLM in Waltenspül et al., which pools "
-        "information across ~52,000 athletes to regularize individual estimates."
+        "information across ~52,000 athletes to regularize individual estimates via partial pooling."
     )
 
 # ── Tab 2: Predictions ────────────────────────────────────────────────────────
@@ -373,21 +500,16 @@ with tab_plot:
 
     fig = go.Figure()
 
-    # PL curve
     fig.add_trace(go.Scatter(
         x=t_range, y=pl_spd,
         mode="lines", name="Power Law model",
         line=dict(color="#E74C3C", width=2.5),
     ))
-
-    # CS curve
     fig.add_trace(go.Scatter(
         x=t_range, y=cs_spd,
         mode="lines", name="Critical Speed model",
         line=dict(color="#2980B9", width=2.5),
     ))
-
-    # CS asymptote
     fig.add_hline(
         y=cs["CS_ms"],
         line_dash="dot",
@@ -395,8 +517,6 @@ with tab_plot:
         annotation_text=f"CS = {cs['CS_ms']:.2f} m/s ({cs['CS_kmh']:.1f} km/h)",
         annotation_position="bottom right",
     )
-
-    # Athlete's PBs
     fig.add_trace(go.Scatter(
         x=times_in, y=speeds_in,
         mode="markers+text", name="Your PBs",
@@ -415,7 +535,6 @@ with tab_plot:
         hovermode="x unified",
     )
     st.plotly_chart(fig, use_container_width=True)
-
     st.caption(
         "**Red** = Power Law curve (speed = S · t⁻ᵇ). "
         "**Blue** = Critical Speed curve (speed = CS + D′/t). "
@@ -423,45 +542,189 @@ with tab_plot:
         "Black dots are your entered personal bests."
     )
 
-    # ── Distance–Time version ──
     st.subheader("Distance–Time View")
     dist_range = np.linspace(t_min, t_max, 600)
-
-    # PL: distance = a · t^(1-b)
     dist_pl = pl["a"] * dist_range ** (1.0 - pl["b"])
-    # CS: distance = CS · t + D'
     dist_cs = cs["CS_ms"] * dist_range + cs["D_prime"]
 
     fig2 = go.Figure()
-    fig2.add_trace(go.Scatter(
-        x=dist_range, y=dist_pl,
-        mode="lines", name="Power Law",
-        line=dict(color="#E74C3C", width=2.5),
-    ))
-    fig2.add_trace(go.Scatter(
-        x=dist_range, y=dist_cs,
-        mode="lines", name="Critical Speed",
-        line=dict(color="#2980B9", width=2.5),
-    ))
-    fig2.add_trace(go.Scatter(
-        x=times_in, y=distances_in,
-        mode="markers+text", name="Your PBs",
-        marker=dict(color="black", size=11),
-        text=[f"{int(d)} m" for d in distances_in],
-        textposition="top center",
-        textfont=dict(size=12),
-    ))
-    fig2.update_layout(
-        xaxis_title="Time (s)",
-        yaxis_title="Distance (m)",
-        height=400,
-        legend=dict(x=0.05, y=0.95),
-        margin=dict(t=20, b=50),
-        hovermode="x unified",
-    )
+    fig2.add_trace(go.Scatter(x=dist_range, y=dist_pl, mode="lines", name="Power Law",
+                              line=dict(color="#E74C3C", width=2.5)))
+    fig2.add_trace(go.Scatter(x=dist_range, y=dist_cs, mode="lines", name="Critical Speed",
+                              line=dict(color="#2980B9", width=2.5)))
+    fig2.add_trace(go.Scatter(x=times_in, y=distances_in,
+                              mode="markers+text", name="Your PBs",
+                              marker=dict(color="black", size=11),
+                              text=[f"{int(d)} m" for d in distances_in],
+                              textposition="top center", textfont=dict(size=12)))
+    fig2.update_layout(xaxis_title="Time (s)", yaxis_title="Distance (m)",
+                       height=400, legend=dict(x=0.05, y=0.95),
+                       margin=dict(t=20, b=50), hovermode="x unified")
     st.plotly_chart(fig2, use_container_width=True)
     st.caption(
-        "The CS curve (blue) is linear in the distance–time plane, "
-        "reflecting the linear regression used to fit it. "
+        "The CS curve (blue) is linear in the distance–time plane. "
         "The PL curve (red) is a power function."
+    )
+
+# ── Tab 4: Population Context ─────────────────────────────────────────────────
+with tab_pop:
+    pop_df = load_population()
+
+    if pop_df is None:
+        st.warning(
+            "Population data not found.  "
+            "Run `python precompute_population.py` in the app directory first."
+        )
+        st.stop()
+
+    if best_event_dist is None:
+        st.info(
+            "World Athletics scoring data not found. "
+            "Cannot determine your event specialization."
+        )
+        st.stop()
+
+    # Filter to matching gender × best event
+    group = pop_df[
+        (pop_df["Gender"] == gender) &
+        (pop_df["Best_event"] == best_event_str)
+    ].copy()
+
+    n_group = len(group)
+
+    st.markdown(
+        f"Based on your WA points, your best event is the **{DIST_LABELS[best_event_dist]}** "
+        f"({best_event_pts:.0f} pts).  \n"
+        f"Comparing you to **{n_group:,}** {gender} **{DIST_LABELS[best_event_dist]} specialists** "
+        f"in the Waltenspül et al. dataset."
+    )
+
+    if n_group < 10:
+        st.warning(
+            f"Only {n_group} athletes in this group — not enough for a meaningful comparison. "
+            "Try adding more distances to better identify your event specialization."
+        )
+        st.stop()
+
+    # ── Distribution plots ───────────────────────────────────────────────────
+
+    def pct_rank(arr, val):
+        """Percentile rank of val in arr (0–100)."""
+        return float(stats.percentileofscore(arr, val, kind="rank"))
+
+    def dist_fig(param_col: str, user_val: float, xlabel: str,
+                 color: str, title: str) -> go.Figure:
+        """Histogram of population values with user's value marked."""
+        pop_vals = group[param_col].dropna().values
+        pct = pct_rank(pop_vals, user_val)
+
+        fig = go.Figure()
+        fig.add_trace(go.Histogram(
+            x=pop_vals,
+            nbinsx=40,
+            marker_color=color,
+            opacity=0.75,
+            name="Population",
+        ))
+        fig.add_vline(
+            x=user_val,
+            line_width=2.5,
+            line_color="black",
+            annotation_text=f"You — {pct:.0f}th percentile",
+            annotation_position="top right",
+            annotation_font_size=12,
+        )
+        fig.update_layout(
+            title=title,
+            xaxis_title=xlabel,
+            yaxis_title="Number of athletes",
+            height=280,
+            margin=dict(t=40, b=40, l=40, r=20),
+            showlegend=False,
+        )
+        return fig, pct
+
+    st.subheader("Power Law parameters")
+    col_s, col_b = st.columns(2)
+
+    with col_s:
+        fig_s, pct_s = dist_fig(
+            "S", pl["S"], "S (m/s)", "#E74C3C",
+            f"Speed coefficient S — {gender} {DIST_LABELS[best_event_dist]} specialists"
+        )
+        st.plotly_chart(fig_s, use_container_width=True)
+        st.metric("Your S", f"{pl['S']:.3f} m/s", f"{pct_s:.0f}th percentile")
+
+    with col_b:
+        fig_b, pct_b = dist_fig(
+            "b", pl["b"], "b (fatigue exponent)", "#E74C3C",
+            f"Fatigue exponent b — {gender} {DIST_LABELS[best_event_dist]} specialists"
+        )
+        st.plotly_chart(fig_b, use_container_width=True)
+        st.metric(
+            "Your b", f"{pl['b']:.4f}",
+            f"{pct_b:.0f}th percentile  (lower = better endurance)",
+            delta_color="inverse",
+        )
+
+    st.subheader("Critical Speed parameters")
+    col_cs, col_dp = st.columns(2)
+
+    with col_cs:
+        fig_cs, pct_cs = dist_fig(
+            "CS_ms", cs["CS_ms"], "CS (m/s)", "#2980B9",
+            f"Critical Speed CS — {gender} {DIST_LABELS[best_event_dist]} specialists"
+        )
+        st.plotly_chart(fig_cs, use_container_width=True)
+        st.metric("Your CS", f"{cs['CS_ms']:.3f} m/s  ({cs['CS_kmh']:.2f} km/h)",
+                  f"{pct_cs:.0f}th percentile")
+
+    with col_dp:
+        fig_dp, pct_dp = dist_fig(
+            "D_prime", cs["D_prime"], "D′ (m)", "#2980B9",
+            f"Anaerobic reserve D′ — {gender} {DIST_LABELS[best_event_dist]} specialists"
+        )
+        st.plotly_chart(fig_dp, use_container_width=True)
+        st.metric("Your D′", f"{cs['D_prime']:.1f} m", f"{pct_dp:.0f}th percentile")
+
+    # ── Percentile summary table ─────────────────────────────────────────────
+    st.divider()
+    st.subheader("Percentile Summary")
+
+    pop_means = group[["S", "b", "CS_ms", "D_prime"]].mean()
+    pop_sds   = group[["S", "b", "CS_ms", "D_prime"]].std()
+
+    summary_rows = [
+        {
+            "Parameter": "S (m/s)",
+            "Your value": f"{pl['S']:.3f}",
+            "Group mean ± SD": f"{pop_means['S']:.3f} ± {pop_sds['S']:.3f}",
+            "Percentile": f"{pct_s:.0f}",
+        },
+        {
+            "Parameter": "b",
+            "Your value": f"{pl['b']:.4f}",
+            "Group mean ± SD": f"{pop_means['b']:.4f} ± {pop_sds['b']:.4f}",
+            "Percentile": f"{pct_b:.0f}  (lower = better endurance)",
+        },
+        {
+            "Parameter": "CS (m/s)",
+            "Your value": f"{cs['CS_ms']:.3f}",
+            "Group mean ± SD": f"{pop_means['CS_ms']:.3f} ± {pop_sds['CS_ms']:.3f}",
+            "Percentile": f"{pct_cs:.0f}",
+        },
+        {
+            "Parameter": "D′ (m)",
+            "Your value": f"{cs['D_prime']:.1f}",
+            "Group mean ± SD": f"{pop_means['D_prime']:.1f} ± {pop_sds['D_prime']:.1f}",
+            "Percentile": f"{pct_dp:.0f}",
+        },
+    ]
+    st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+
+    st.caption(
+        f"Population: {n_group:,} {gender} athletes whose highest WA score was in the "
+        f"{DIST_LABELS[best_event_dist]}. "
+        "Individual parameters are estimated by OLS (same method as your own fit), "
+        "not the full hierarchical MLM of the original paper."
     )
