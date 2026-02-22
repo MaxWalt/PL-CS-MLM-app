@@ -19,7 +19,6 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
 from scipy import stats
 import streamlit as st
 
@@ -570,164 +569,155 @@ with tab_plot:
 
 # ── Tab 4: Population Context ─────────────────────────────────────────────────
 with tab_pop:
+
     pop_df = load_population()
 
+    # ── Guard: CSV missing ───────────────────────────────────────────────────
     if pop_df is None:
         st.warning(
-            "Population data not found.  "
-            "Run `python precompute_population.py` in the app directory first."
-        )
-        st.stop()
-
-    if best_event_dist is None:
-        st.info(
-            "World Athletics scoring data not found. "
-            "Cannot determine your event specialization."
-        )
-        st.stop()
-
-    # Filter to matching gender × best event
-    # Note: Best_event is stored as int64 in the CSV (400, 800, 1500, …)
-    group = pop_df[
-        (pop_df["Gender"] == gender) &
-        (pop_df["Best_event"] == best_event_dist)
-    ].copy()
-
-    n_group = len(group)
-
-    st.markdown(
-        f"Based on your WA points, your best event is the **{DIST_LABELS[best_event_dist]}** "
-        f"({best_event_pts:.0f} pts).  \n"
-        f"Comparing you to **{n_group:,}** {gender} **{DIST_LABELS[best_event_dist]} specialists** "
-        f"in the Waltenspül et al. dataset."
-    )
-
-    if n_group < 10:
-        st.warning(
-            f"Only {n_group} athletes in this group — not enough for a meaningful comparison. "
-            "Try adding more distances to better identify your event specialization."
-        )
-        st.stop()
-
-    # ── Distribution plots ───────────────────────────────────────────────────
-
-    def pct_rank(arr, val):
-        """Percentile rank of val in arr (0–100)."""
-        return float(stats.percentileofscore(arr, val, kind="rank"))
-
-    def dist_fig(param_col: str, user_val: float, xlabel: str,
-                 color: str, title: str) -> go.Figure:
-        """Histogram of population values with user's value marked."""
-        pop_vals = group[param_col].dropna().values
-        pct = pct_rank(pop_vals, user_val)
-
-        fig = go.Figure()
-        fig.add_trace(go.Histogram(
-            x=pop_vals,
-            nbinsx=40,
-            marker_color=color,
-            opacity=0.75,
-            name="Population",
-        ))
-        fig.add_vline(
-            x=user_val,
-            line_width=2.5,
-            line_color="black",
-            annotation_text=f"You — {pct:.0f}th percentile",
-            annotation_position="top right",
-            annotation_font_size=12,
-        )
-        fig.update_layout(
-            title=title,
-            xaxis_title=xlabel,
-            yaxis_title="Number of athletes",
-            height=280,
-            margin=dict(t=40, b=40, l=40, r=20),
-            showlegend=False,
-        )
-        return fig, pct
-
-    st.subheader("Power Law parameters")
-    col_s, col_b = st.columns(2)
-
-    with col_s:
-        fig_s, pct_s = dist_fig(
-            "S", pl["S"], "S (m/s)", "#E74C3C",
-            f"Speed coefficient S — {gender} {DIST_LABELS[best_event_dist]} specialists"
-        )
-        st.plotly_chart(fig_s, use_container_width=True)
-        st.metric("Your S", f"{pl['S']:.3f} m/s", f"{pct_s:.0f}th percentile")
-
-    with col_b:
-        fig_b, pct_b = dist_fig(
-            "b", pl["b"], "b (fatigue exponent)", "#E74C3C",
-            f"Fatigue exponent b — {gender} {DIST_LABELS[best_event_dist]} specialists"
-        )
-        st.plotly_chart(fig_b, use_container_width=True)
-        st.metric(
-            "Your b", f"{pl['b']:.4f}",
-            f"{pct_b:.0f}th percentile  (lower = better endurance)",
-            delta_color="inverse",
+            "**Population data file not found.**  \n"
+            "Run `python precompute_population.py` in the app directory once to generate it."
         )
 
-    st.subheader("Critical Speed parameters")
-    col_cs, col_dp = st.columns(2)
+    # ── Guard: best event unknown ────────────────────────────────────────────
+    elif best_event_dist is None:
+        st.info("Enter personal bests in the sidebar — WA points will determine your event specialization.")
 
-    with col_cs:
-        fig_cs, pct_cs = dist_fig(
-            "CS_ms", cs["CS_ms"], "CS (m/s)", "#2980B9",
-            f"Critical Speed CS — {gender} {DIST_LABELS[best_event_dist]} specialists"
+    # ── Main content ─────────────────────────────────────────────────────────
+    else:
+        # Filter population to matching gender × best event
+        # Best_event is stored as int64 in the CSV (400, 800, 1500, …)
+        group = pop_df[
+            (pop_df["Gender"] == gender) &
+            (pop_df["Best_event"] == best_event_dist)
+        ].copy()
+        n_group = len(group)
+
+        st.markdown(
+            f"Based on your WA points, your best event is the "
+            f"**{DIST_LABELS[best_event_dist]}** ({best_event_pts:.0f} pts).  \n"
+            f"Comparing you to **{n_group:,}** {gender} "
+            f"**{DIST_LABELS[best_event_dist]} specialists** in the Waltenspül et al. dataset."
         )
-        st.plotly_chart(fig_cs, use_container_width=True)
-        st.metric("Your CS", f"{cs['CS_ms']:.3f} m/s  ({cs['CS_kmh']:.2f} km/h)",
-                  f"{pct_cs:.0f}th percentile")
 
-    with col_dp:
-        fig_dp, pct_dp = dist_fig(
-            "D_prime", cs["D_prime"], "D′ (m)", "#2980B9",
-            f"Anaerobic reserve D′ — {gender} {DIST_LABELS[best_event_dist]} specialists"
-        )
-        st.plotly_chart(fig_dp, use_container_width=True)
-        st.metric("Your D′", f"{cs['D_prime']:.1f} m", f"{pct_dp:.0f}th percentile")
+        if n_group < 10:
+            st.warning(
+                f"Only {n_group} athletes in this group — not enough for a meaningful comparison. "
+                "Try adding more distances to better identify your event specialization."
+            )
 
-    # ── Percentile summary table ─────────────────────────────────────────────
-    st.divider()
-    st.subheader("Percentile Summary")
+        else:
+            # Helper: percentile rank
+            def pct_rank(arr, val):
+                return float(stats.percentileofscore(arr, val, kind="rank"))
 
-    pop_means = group[["S", "b", "CS_ms", "D_prime"]].mean()
-    pop_sds   = group[["S", "b", "CS_ms", "D_prime"]].std()
+            # Helper: histogram with user marker
+            def dist_fig(param_col, user_val, xlabel, color, title):
+                pop_vals = group[param_col].dropna().values
+                pct = pct_rank(pop_vals, user_val)
+                fig = go.Figure()
+                fig.add_trace(go.Histogram(
+                    x=pop_vals, nbinsx=40,
+                    marker_color=color, opacity=0.75, name="Population",
+                ))
+                fig.add_vline(
+                    x=user_val, line_width=2.5, line_color="black",
+                    annotation_text=f"You — {pct:.0f}th percentile",
+                    annotation_position="top right", annotation_font_size=12,
+                )
+                fig.update_layout(
+                    title=title, xaxis_title=xlabel,
+                    yaxis_title="Number of athletes",
+                    height=280, margin=dict(t=40, b=40, l=40, r=20),
+                    showlegend=False,
+                )
+                return fig, pct
 
-    summary_rows = [
-        {
-            "Parameter": "S (m/s)",
-            "Your value": f"{pl['S']:.3f}",
-            "Group mean ± SD": f"{pop_means['S']:.3f} ± {pop_sds['S']:.3f}",
-            "Percentile": f"{pct_s:.0f}",
-        },
-        {
-            "Parameter": "b",
-            "Your value": f"{pl['b']:.4f}",
-            "Group mean ± SD": f"{pop_means['b']:.4f} ± {pop_sds['b']:.4f}",
-            "Percentile": f"{pct_b:.0f}  (lower = better endurance)",
-        },
-        {
-            "Parameter": "CS (m/s)",
-            "Your value": f"{cs['CS_ms']:.3f}",
-            "Group mean ± SD": f"{pop_means['CS_ms']:.3f} ± {pop_sds['CS_ms']:.3f}",
-            "Percentile": f"{pct_cs:.0f}",
-        },
-        {
-            "Parameter": "D′ (m)",
-            "Your value": f"{cs['D_prime']:.1f}",
-            "Group mean ± SD": f"{pop_means['D_prime']:.1f} ± {pop_sds['D_prime']:.1f}",
-            "Percentile": f"{pct_dp:.0f}",
-        },
-    ]
-    st.dataframe(pd.DataFrame(summary_rows), use_container_width=True, hide_index=True)
+            # ── PL distributions ─────────────────────────────────────────────
+            st.subheader("Power Law parameters")
+            col_s, col_b = st.columns(2)
 
-    st.caption(
-        f"Population: {n_group:,} {gender} athletes whose highest WA score was in the "
-        f"{DIST_LABELS[best_event_dist]}. "
-        "Individual parameters are estimated by OLS (same method as your own fit), "
-        "not the full hierarchical MLM of the original paper."
-    )
+            with col_s:
+                fig_s, pct_s = dist_fig(
+                    "S", pl["S"], "S (m/s)", "#E74C3C",
+                    f"Speed coefficient S — {gender} {DIST_LABELS[best_event_dist]} specialists",
+                )
+                st.plotly_chart(fig_s, use_container_width=True)
+                st.metric("Your S", f"{pl['S']:.3f} m/s", f"{pct_s:.0f}th percentile")
+
+            with col_b:
+                fig_b, pct_b = dist_fig(
+                    "b", pl["b"], "b (fatigue exponent)", "#E74C3C",
+                    f"Fatigue exponent b — {gender} {DIST_LABELS[best_event_dist]} specialists",
+                )
+                st.plotly_chart(fig_b, use_container_width=True)
+                st.metric(
+                    "Your b", f"{pl['b']:.4f}",
+                    f"{pct_b:.0f}th percentile  (lower = better endurance)",
+                    delta_color="inverse",
+                )
+
+            # ── CS distributions ─────────────────────────────────────────────
+            st.subheader("Critical Speed parameters")
+            col_cs, col_dp = st.columns(2)
+
+            with col_cs:
+                fig_cs, pct_cs = dist_fig(
+                    "CS_ms", cs["CS_ms"], "CS (m/s)", "#2980B9",
+                    f"Critical Speed CS — {gender} {DIST_LABELS[best_event_dist]} specialists",
+                )
+                st.plotly_chart(fig_cs, use_container_width=True)
+                st.metric(
+                    "Your CS",
+                    f"{cs['CS_ms']:.3f} m/s  ({cs['CS_kmh']:.2f} km/h)",
+                    f"{pct_cs:.0f}th percentile",
+                )
+
+            with col_dp:
+                fig_dp, pct_dp = dist_fig(
+                    "D_prime", cs["D_prime"], "D′ (m)", "#2980B9",
+                    f"Anaerobic reserve D′ — {gender} {DIST_LABELS[best_event_dist]} specialists",
+                )
+                st.plotly_chart(fig_dp, use_container_width=True)
+                st.metric("Your D′", f"{cs['D_prime']:.1f} m", f"{pct_dp:.0f}th percentile")
+
+            # ── Summary table ─────────────────────────────────────────────────
+            st.divider()
+            st.subheader("Percentile Summary")
+
+            pop_means = group[["S", "b", "CS_ms", "D_prime"]].mean()
+            pop_sds   = group[["S", "b", "CS_ms", "D_prime"]].std()
+
+            st.dataframe(pd.DataFrame([
+                {
+                    "Parameter": "S (m/s)",
+                    "Your value": f"{pl['S']:.3f}",
+                    "Group mean ± SD": f"{pop_means['S']:.3f} ± {pop_sds['S']:.3f}",
+                    "Percentile": f"{pct_s:.0f}",
+                },
+                {
+                    "Parameter": "b",
+                    "Your value": f"{pl['b']:.4f}",
+                    "Group mean ± SD": f"{pop_means['b']:.4f} ± {pop_sds['b']:.4f}",
+                    "Percentile": f"{pct_b:.0f}  (lower = better endurance)",
+                },
+                {
+                    "Parameter": "CS (m/s)",
+                    "Your value": f"{cs['CS_ms']:.3f}",
+                    "Group mean ± SD": f"{pop_means['CS_ms']:.3f} ± {pop_sds['CS_ms']:.3f}",
+                    "Percentile": f"{pct_cs:.0f}",
+                },
+                {
+                    "Parameter": "D′ (m)",
+                    "Your value": f"{cs['D_prime']:.1f}",
+                    "Group mean ± SD": f"{pop_means['D_prime']:.1f} ± {pop_sds['D_prime']:.1f}",
+                    "Percentile": f"{pct_dp:.0f}",
+                },
+            ]), use_container_width=True, hide_index=True)
+
+            st.caption(
+                f"Population: {n_group:,} {gender} athletes whose highest WA score was in the "
+                f"{DIST_LABELS[best_event_dist]}. "
+                "Individual parameters are estimated by OLS (same method as your own fit), "
+                "not the full hierarchical MLM of the original paper."
+            )
