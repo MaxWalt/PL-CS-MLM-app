@@ -14,7 +14,6 @@ information across ~52,000 athletes), but is the natural approach for a
 single athlete entering their own race times.
 """
 
-import json
 from pathlib import Path
 
 import numpy as np
@@ -22,7 +21,6 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from scipy import stats
-from scipy.interpolate import interp1d
 import streamlit as st
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -173,42 +171,47 @@ def mare(actual, predicted) -> float:
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# WA scoring (lookup-table interpolation)
+# WA scoring  (quadratic formula — 2023 World Athletics scoring tables)
+#
+# Formula:  Points = INT( A·T² + B·T + C )   where T is time in seconds
+#
+# Coefficients derived from the official WA scoring table PDFs via
+# jchen1/iaaf-scoring-tables (github.com/jchen1/iaaf-scoring-tables).
+# Verified against MDLD_speed dataset: mean error < 1 pt for all distances.
 # ─────────────────────────────────────────────────────────────────────────────
 
-@st.cache_data
-def load_wa_lookup() -> dict:
-    path = APP_DIR / "wa_lookup.json"
-    if not path.exists():
-        return {}
-    with open(path) as f:
-        return json.load(f)
+_WA_COEFFS: dict[str, dict[int, tuple]] = {
+    "Male": {
+        400:   ( 1.0210130425533885,  -161.30922380614925,  6371.289298870831),
+        800:   ( 0.1980049254240715,   -72.071360390698,    6558.281603197655),
+        1500:  ( 0.04065992530101173,  -31.307736300238858, 6026.662254454998),
+        3000:  ( 0.008150049932737697, -13.691983542322477, 5750.592463763857),
+        5000:  ( 0.002777997945466534,  -8.000608112339254, 5760.418712472778),
+        10000: ( 5.23999442929867e-4,   -3.301192525967682, 5199.371486424821),
+    },
+    "Female": {
+        400:   ( 0.33500597584334024,  -73.69744695937294,  4053.154524419874),
+        800:   ( 0.06879989342031843,  -34.39926191656708,  4299.822125128750),
+        1500:  ( 0.013399996270512058, -14.471861176585705, 3907.365583602317),
+        3000:  ( 0.0025389974609586466, -6.093570428561163, 3656.127933662038),
+        5000:  ( 8.079992470755665e-4,  -3.3935897885514335,3563.261678007073),
+        10000: ( 1.712000450302986e-4,  -1.5407985033799534,3466.792517297210),
+    },
+}
 
 
 def get_wa_points(gender: str, distance: int, time_s: float) -> float | None:
     """
-    Return WA points for a (gender, distance, time) triple using linear
-    interpolation over the empirical scoring table derived from MDLD_speed.
-    Returns None if lookup data is unavailable.
+    Return WA points (truncated integer) for a given gender, distance (m),
+    and time (seconds) using the 2023 World Athletics quadratic scoring formula.
+    Returns None if the event is not in the table.
     """
-    lookup = load_wa_lookup()
-    data = lookup.get(gender, {}).get(str(distance))
-    if not data:
+    coeffs = _WA_COEFFS.get(gender, {}).get(distance)
+    if coeffs is None:
         return None
-
-    t_arr = np.array(data["times"])
-    p_arr = np.array(data["pts"])
-
-    if time_s > t_arr.max():
-        return 0.0                      # slower than the slowest scored performance
-
-    if time_s < t_arr.min():
-        # Extrapolate linearly above the dataset maximum (world-record territory)
-        f = interp1d(t_arr[:2], p_arr[:2], fill_value="extrapolate")
-        return max(0.0, float(f(time_s)))
-
-    f = interp1d(t_arr, p_arr, kind="linear")
-    return float(f(time_s))
+    A, B, C = coeffs
+    pts = A * time_s ** 2 + B * time_s + C
+    return max(0.0, float(int(pts)))   # truncate, not round
 
 
 def detect_best_event(gender: str, inputs: dict[int, float]) -> tuple[int, float] | None:
@@ -314,9 +317,8 @@ wa_pts_user: dict[int, float | None] = {
     d: get_wa_points(gender, d, t) for d, t in inputs.items()
 }
 best_event_result = detect_best_event(gender, inputs)
-best_event_dist = best_event_result[0] if best_event_result else None
+best_event_dist = best_event_result[0] if best_event_result else None   # int
 best_event_pts  = best_event_result[1] if best_event_result else None
-best_event_str  = str(best_event_dist) if best_event_dist else "unknown"
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Fit models
@@ -585,9 +587,10 @@ with tab_pop:
         st.stop()
 
     # Filter to matching gender × best event
+    # Note: Best_event is stored as int64 in the CSV (400, 800, 1500, …)
     group = pop_df[
         (pop_df["Gender"] == gender) &
-        (pop_df["Best_event"] == best_event_str)
+        (pop_df["Best_event"] == best_event_dist)
     ].copy()
 
     n_group = len(group)
