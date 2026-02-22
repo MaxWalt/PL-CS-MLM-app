@@ -3,16 +3,17 @@
 A Streamlit web app that fits the **Power Law (PL)** and **Critical Speed (CS)** models
 to an individual athlete's personal bests (400 m – 10,000 m) and returns:
 
-- Individual physiological parameters (S, E, CS, D′)
+- Individual parameters (S, E, CS, D′)
 - Predicted race times for all standard middle- and long-distance events
 - Speed–duration and distance–time profile charts
 - Fit quality metrics (MAE, MARE)
+- Comparison with peers
 
 ## Background
 
 Based on the multi-level modeling (MLM) framework from:
 
-> Waltenspül et al. (2024–2025). *Using MLM to compare Power Law vs Critical Speed.*
+> Walt et al. (2025). *Using Multilevel Models to Compare Performance Prediction and Characterization Abilities Between Power-Law and Critical-Speed Models in Middle- and Long-Distance Running*. International Journal of Sports Physiology and Performance
 
 The two models:
 
@@ -23,8 +24,7 @@ The two models:
 
 > **Note on fitting approach:** Parameters are estimated by direct OLS curve-fitting
 > to the user's personal bests. The original paper uses a population MLM on ~52,000
-> athletes to regularize individual estimates via partial pooling. Both approaches
-> yield the same parameter definitions — they differ in regularization.
+> athletes to regularize individual estimates via partial pooling.
 
 ## Running the app
 
