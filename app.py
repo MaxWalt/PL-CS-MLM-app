@@ -393,7 +393,7 @@ if any(v is not None for v in wa_pts_user.values()):
 # ─────────────────────────────────────────────────────────────────────────────
 
 tab_params, tab_preds, tab_plot, tab_pop = st.tabs(
-    ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile", "👥 Population Context"]
+    ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile", "👥 Comparison with Peers"]
 )
 
 # ── Tab 1: Parameters ─────────────────────────────────────────────────────────
@@ -651,14 +651,13 @@ with tab_pop:
 
             with col_b:
                 fig_b, pct_b = dist_fig(
-                    "b", pl["b"], "b (fatigue exponent)", "#E74C3C",
-                    f"Fatigue exponent b — {gender} {DIST_LABELS[best_event_dist]} specialists",
+                    "E", pl["E"], "E (endurance index)", "#E74C3C",
+                    f"Endurance index E — {gender} {DIST_LABELS[best_event_dist]} specialists",
                 )
                 st.plotly_chart(fig_b, use_container_width=True)
                 st.metric(
-                    "Your b", f"{pl['b']:.4f}",
-                    f"{pct_b:.0f}th percentile  (lower = better endurance)",
-                    delta_color="inverse",
+                    "Your E", f"{pl['E']:.4f}",
+                    f"{pct_b:.0f}th percentile  (higher = better endurance)",
                 )
 
             # ── CS distributions ─────────────────────────────────────────────
@@ -689,8 +688,8 @@ with tab_pop:
             st.divider()
             st.subheader("Percentile Summary")
 
-            pop_means = group[["S", "b", "CS_ms", "D_prime"]].mean()
-            pop_sds   = group[["S", "b", "CS_ms", "D_prime"]].std()
+            pop_means = group[["S", "E", "CS_ms", "D_prime"]].mean()
+            pop_sds   = group[["S", "E", "CS_ms", "D_prime"]].std()
 
             st.dataframe(pd.DataFrame([
                 {
@@ -700,10 +699,10 @@ with tab_pop:
                     "Percentile": f"{pct_s:.0f}",
                 },
                 {
-                    "Parameter": "b",
-                    "Your value": f"{pl['b']:.4f}",
-                    "Group mean ± SD": f"{pop_means['b']:.4f} ± {pop_sds['b']:.4f}",
-                    "Percentile": f"{pct_b:.0f}  (lower = better endurance)",
+                    "Parameter": "E (endurance index)",
+                    "Your value": f"{pl['E']:.4f}",
+                    "Group mean ± SD": f"{pop_means['E']:.4f} ± {pop_sds['E']:.4f}",
+                    "Percentile": f"{pct_b:.0f}  (higher = better endurance)",
                 },
                 {
                     "Parameter": "CS (m/s)",
