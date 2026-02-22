@@ -231,12 +231,17 @@ def detect_best_event(gender: str, inputs: dict[int, float]) -> tuple[int, float
 # Population data
 # ─────────────────────────────────────────────────────────────────────────────
 
-@st.cache_data
-def load_population() -> pd.DataFrame | None:
+@st.cache_resource
+def load_population():
+    """Load population parameters CSV once per server lifecycle."""
     path = APP_DIR / "population_params.csv"
     if not path.exists():
-        return None
-    return pd.read_csv(path)
+        return None, f"File not found: {path}"
+    try:
+        df = pd.read_csv(path)
+        return df, None
+    except Exception as e:
+        return None, str(e)
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -569,15 +574,14 @@ with tab_plot:
 
 # ── Tab 4: Population Context ─────────────────────────────────────────────────
 with tab_pop:
+    try:
+        pop_df, pop_err = load_population()
+    except Exception as e:
+        pop_df, pop_err = None, str(e)
 
-    pop_df = load_population()
-
-    # ── Guard: CSV missing ───────────────────────────────────────────────────
+    # ── Guard: CSV missing or error ──────────────────────────────────────────
     if pop_df is None:
-        st.warning(
-            "**Population data file not found.**  \n"
-            "Run `python precompute_population.py` in the app directory once to generate it."
-        )
+        st.warning(f"**Population data could not be loaded.**  \n`{pop_err}`")
 
     # ── Guard: best event unknown ────────────────────────────────────────────
     elif best_event_dist is None:
