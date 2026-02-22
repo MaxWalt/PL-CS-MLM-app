@@ -2,9 +2,9 @@
 Power Law & Critical Speed Running Model Analyzer
 ==================================================
 Fits the Power Law (PL) and Critical Speed (CS) models to an individual
-athlete's personal bests and returns physiological parameters + predictions.
+athlete's personal bests and returns parameters + predictions.
 
-Model equations (Waltenspül et al., 2024-2025):
+Model equations (Walt et al., 2025):
   PL:  speed = S · t^(-b)   where b = 1 - E
   CS:  speed = CS + D′ / t
 
@@ -252,11 +252,11 @@ st.title("🏃 Power Law & Critical Speed Running Analyzer")
 st.markdown(
     "Enter your personal bests for **at least 2 distances**. "
     "The app fits the **Power Law (PL)** and **Critical Speed (CS)** models "
-    "to your data and returns individual physiological parameters, "
+    "to your data and returns individual parameters, "
     "performance predictions for all standard distances, a "
-    "speed–duration profile, and your **population context** "
+    "speed–duration profile, and your **comparison with peers** "
     "(where you stand among ~52,000 athletes of the same gender and event specialization).\n\n"
-    "> Based on the MLM modeling framework from Waltenspül et al. (2024–2025)."
+    "> Based on the MLM modeling framework from Walt et al. (2025)."
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -288,7 +288,9 @@ with st.sidebar:
             raw_inputs[d] = val.strip()
 
     st.divider()
-    st.caption("📖 Waltenspül et al. — *CS vs PL paper*, 2024–2025")
+    st.caption("📖 Walt et al. (2025). *Walt et al. (2025). Using Multilevel Models to Compare Performance Prediction "
+               "and Characterization Abilities Between Power-Law and Critical-Speed Models in Middle- and Long-Distance Running*. "
+               "International Journal of Sports Physiology and Performance, 2024–2025")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Parse & validate
