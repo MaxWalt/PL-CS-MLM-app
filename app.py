@@ -288,7 +288,7 @@ with st.sidebar:
             raw_inputs[d] = val.strip()
 
     st.divider()
-    st.caption("📖 Walt et al. (2025). *Walt et al. (2025). Using Multilevel Models to Compare Performance Prediction "
+    st.caption("📖 Walt et al. (2025). *Using Multilevel Models to Compare Performance Prediction "
                "and Characterization Abilities Between Power-Law and Critical-Speed Models in Middle- and Long-Distance Running*. "
                "International Journal of Sports Physiology and Performance, 2024–2025")
 
