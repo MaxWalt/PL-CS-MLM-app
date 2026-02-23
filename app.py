@@ -417,9 +417,9 @@ with tab_params:
 
                 | Parameter | Interpretation |
                 |-----------|----------------|
-                | **S** | Speed capability — higher = faster athlete at all durations |
-                | **E** | Endurance index = 1 − b; closer to 1.0 → less speed decay with time |
-                | **b** | Fatigue/decay exponent = 1 − E; higher → speed drops faster with duration |
+                | **S** | Maximal theoretical speed over 1s: higher = faster athlete |
+                | **E** | Endurance parameter: closer to 1.0 = more endurant athlete |
+                | **b** | Fatigue/decay exponent = 1 − E; higher = speed drops faster with duration |
 
                 *S* and *b* together define your entire speed–duration profile.
                 """
@@ -441,8 +441,8 @@ with tab_params:
 
                 | Parameter | Interpretation |
                 |-----------|----------------|
-                | **CS** | Critical Speed — highest metabolically sustainable speed (anaerobic threshold proxy) |
-                | **D′** | Anaerobic work capacity expressed as a distance (m). A larger D′ means more capacity to run above CS |
+                | **CS** | Critical Speed, highest metabolically sustainable speed (anaerobic threshold proxy) |
+                | **D′** | Finite anaerobic work capacity expressed as a distance (m). A larger D′ means more capacity to run above CS |
 
                 *CS* acts as the lower asymptote of the speed–duration curve.
                 """
@@ -451,8 +451,6 @@ with tab_params:
     st.divider()
     st.caption(
         "Parameters are estimated by direct OLS curve-fitting to your personal bests. "
-        "This differs from the population MLM in Waltenspül et al., which pools "
-        "information across ~52,000 athletes to regularize individual estimates via partial pooling."
     )
 
 # ── Tab 2: Predictions ────────────────────────────────────────────────────────
@@ -699,6 +697,8 @@ with tab_pop:
                     "Your value": f"{pl['S']:.3f}",
                     "Group mean ± SD": f"{pop_means['S']:.3f} ± {pop_sds['S']:.3f}",
                     "Percentile": f"{pct_s:.0f}",
+                    "Explanation": "Higher = higher speed abilities compared to " f"{n_group:,} {gender} athletes whose highest WA score was in the "
+                f"{DIST_LABELS[best_event_dist]}. "
                 },
                 {
                     "Parameter": "E (endurance index)",
