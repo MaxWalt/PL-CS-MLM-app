@@ -601,7 +601,7 @@ with tab_pop:
             f"Based on your WA points, your best event is the "
             f"**{DIST_LABELS[best_event_dist]}** ({best_event_pts:.0f} pts).  \n"
             f"Comparing you to **{n_group:,}** {gender} "
-            f"**{DIST_LABELS[best_event_dist]} specialists** in the Waltenspül et al. dataset."
+            f"**{DIST_LABELS[best_event_dist]} specialists** in the Walt et al. (2025) dataset."
         )
 
         if n_group < 10:
@@ -657,7 +657,7 @@ with tab_pop:
                 st.plotly_chart(fig_b, use_container_width=True)
                 st.metric(
                     "Your E", f"{pl['E']:.4f}",
-                    f"{pct_b:.0f}th percentile  (higher = better endurance)",
+                    f"{pct_b:.0f}th percentile",
                 )
 
             # ── CS distributions ─────────────────────────────────────────────
