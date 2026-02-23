@@ -703,7 +703,7 @@ with tab_pop:
                     "Parameter": "E (endurance index)",
                     "Your value": f"{pl['E']:.4f}",
                     "Group mean ± SD": f"{pop_means['E']:.4f} ± {pop_sds['E']:.4f}",
-                    "Percentile": f"{pct_b:.0f}  (higher = better endurance)",
+                    "Percentile": f"{pct_b:.0f}",
                     "Explanation": "Higher = better endurance/durability",
                 },
                 {
