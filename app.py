@@ -697,26 +697,28 @@ with tab_pop:
                     "Your value": f"{pl['S']:.3f}",
                     "Group mean ± SD": f"{pop_means['S']:.3f} ± {pop_sds['S']:.3f}",
                     "Percentile": f"{pct_s:.0f}",
-                    "Explanation": "Higher = higher speed abilities compared to " f"{n_group:,} {gender} athletes whose highest WA score was in the "
-                f"{DIST_LABELS[best_event_dist]}. "
+                    "Explanation": "Higher = higher speed abilities",
                 },
                 {
                     "Parameter": "E (endurance index)",
                     "Your value": f"{pl['E']:.4f}",
                     "Group mean ± SD": f"{pop_means['E']:.4f} ± {pop_sds['E']:.4f}",
                     "Percentile": f"{pct_b:.0f}  (higher = better endurance)",
+                    "Explanation": "Higher = better endurance/durability",
                 },
                 {
                     "Parameter": "CS (m/s)",
                     "Your value": f"{cs['CS_ms']:.3f}",
                     "Group mean ± SD": f"{pop_means['CS_ms']:.3f} ± {pop_sds['CS_ms']:.3f}",
                     "Percentile": f"{pct_cs:.0f}",
+                    "Explanation": "Higher = better second threshold/endurance",
                 },
                 {
                     "Parameter": "D′ (m)",
                     "Your value": f"{cs['D_prime']:.1f}",
                     "Group mean ± SD": f"{pop_means['D_prime']:.1f} ± {pop_sds['D_prime']:.1f}",
                     "Percentile": f"{pct_dp:.0f}",
+                    "Explanation": "Higher = better reserve above CS",
                 },
             ]), use_container_width=True, hide_index=True)
 
