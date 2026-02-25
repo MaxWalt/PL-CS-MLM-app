@@ -746,9 +746,10 @@ with tab_pop:
 with tab_consult:
     st.subheader("Want a Deeper Dive into Your Data?")
     st.markdown(
-        "Book a one-on-one session to go beyond the numbers — discuss your "
-        "physiological profile, training implications, and how your PL & CS "
-        "parameters compare to athletes at your level."
+        "Book an introductory one-on-one session to explore how performance "
+        "modelling can inform your training and competition approach."
+        
+        "*This session focuses on understanding your context and determining whether a deeper performance analysis would be beneficial.*"
     )
     components.html(
         """
