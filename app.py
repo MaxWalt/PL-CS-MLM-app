@@ -750,6 +750,10 @@ with tab_consult:
         "modelling can inform your training and competition approach."
         
         "*This session focuses on understanding your context and determining whether a deeper performance analysis would be beneficial.*"
+      multi = '''Book an introductory one-on-one session to explore how performance modelling can inform your training and competition approach.
+        
+        "*This session focuses on understanding your context and determining whether a deeper performance analysis would be beneficial.*"
+'''
     )
     components.html(
         """
