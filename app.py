@@ -21,6 +21,7 @@ import pandas as pd
 import plotly.graph_objects as go
 from scipy import stats
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
@@ -361,6 +362,15 @@ if not (0 < pl["b"] < 2):
         "Try adding more distances."
     )
 
+# CS validated range: 2–20 min (120–1200 s)
+_cs_outside = [DIST_LABELS[d] for d, t in inputs.items() if not (120 <= t <= 1200)]
+if _cs_outside:
+    st.warning(
+        f"⚠️ The following performances are outside the range validated for the "
+        f"Critical Speed model (2–20 minutes): **{', '.join(_cs_outside)}**. "
+        "The CS results may therefore not reflect reality."
+    )
+
 # ─────────────────────────────────────────────────────────────────────────────
 # WA points summary bar (shown above tabs)
 # ─────────────────────────────────────────────────────────────────────────────
@@ -379,6 +389,8 @@ if any(v is not None for v in wa_pts_user.values()):
             delta=delta,
             delta_color="off",
         )
+        if pts is not None and pts > 1400:
+            wa_cols[i].caption("⚠️ > 1400 pts max")
 
     if best_event_dist:
         wa_cols[-1].metric(
@@ -394,8 +406,9 @@ if any(v is not None for v in wa_pts_user.values()):
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
 
-tab_params, tab_preds, tab_plot, tab_pop = st.tabs(
-    ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile", "👥 Comparison with Peers"]
+tab_params, tab_preds, tab_plot, tab_pop, tab_consult = st.tabs(
+    ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile",
+     "👥 Comparison with Peers", "🔬 Want a Deeper Dive?"]
 )
 
 # ── Tab 1: Parameters ─────────────────────────────────────────────────────────
@@ -728,3 +741,25 @@ with tab_pop:
                 "Individual parameters are estimated by OLS (same method as your own fit), "
                 "not the full hierarchical MLM of the original paper."
             )
+
+# ── Tab 5: Deeper dive / consult booking ─────────────────────────────────────
+with tab_consult:
+    st.subheader("Want a Deeper Dive into Your Data?")
+    st.markdown(
+        "Book a one-on-one session to go beyond the numbers — discuss your "
+        "physiological profile, training implications, and how your PL & CS "
+        "parameters compare to athletes at your level."
+    )
+    components.html(
+        """
+        <!-- Calendly inline widget begin -->
+        <div class="calendly-inline-widget"
+             data-url="https://calendly.com/maxime-walt/meeting-data"
+             style="min-width:320px;height:700px;"></div>
+        <script type="text/javascript"
+                src="https://assets.calendly.com/assets/external/widget.js"
+                async></script>
+        <!-- Calendly inline widget end -->
+        """,
+        height=720,
+    )
