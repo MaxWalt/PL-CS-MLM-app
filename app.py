@@ -747,14 +747,13 @@ with tab_consult:
     st.subheader("Want a Deeper Dive into Your Data?")
     st.markdown(
         "Book an introductory one-on-one session to explore how performance "
-        "modelling can inform your training and competition approach."
+        "modelling can inform your training and competition approach." 
         
         "*This session focuses on understanding your context and determining whether a deeper performance analysis would be beneficial.*"
-      multi = '''Book an introductory one-on-one session to explore how performance modelling can inform your training and competition approach.
+        )
+  st.markdown('''Book an introductory one-on-one session to explore how performance modelling can inform your training and competition approach.
         
-        "*This session focuses on understanding your context and determining whether a deeper performance analysis would be beneficial.*"
-'''
-    )
+This session focuses on understanding your context and determining whether a deeper performance analysis would be beneficial.''')
     components.html(
         """
         <!-- Calendly inline widget begin -->
