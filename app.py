@@ -278,13 +278,21 @@ with st.sidebar:
 
     st.subheader("Personal Bests")
     st.caption(
-        "Format: `mm:ss.xx`  \n"
-        "Examples: `1:45.50`, `3:32.12`, `14:06.92`, `62:04.10`   \n"
+        "Format: `ss.xx`, `m:ss`, or `m:ss.xx`  \n"
+        "Examples: `46.89`, `3:29.12`, `28:30.30`  \n"
         "Leave blank to skip a distance."
     )
+    _PLACEHOLDERS = {
+        400: "e.g. 46.89",
+        800: "e.g. 1:45.50",
+        1500: "e.g. 3:29.12",
+        3000: "e.g. 7:52.28",
+        5000: "e.g. 13:49.03",
+        10000: "e.g. 28:30.30",
+    }
     raw_inputs: dict[int, str] = {}
     for d in DISTANCES:
-        val = st.text_input(DIST_LABELS[d], key=str(d), placeholder="e.g. 1:45.50")
+        val = st.text_input(DIST_LABELS[d], key=str(d), placeholder=_PLACEHOLDERS[d])
         if val.strip():
             raw_inputs[d] = val.strip()
 
