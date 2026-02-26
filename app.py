@@ -278,8 +278,8 @@ with st.sidebar:
 
     st.subheader("Personal Bests")
     st.caption(
-        "Format: `m:ss` or `m:ss.xx`  \n"
-        "Examples: `1:45.50`, `3:32`, `14:06.92`  \n"
+        "Format: `mm:ss.xx`  \n"
+        "Examples: `1:45.50`, `3:32.12`, `14:06.92`, `62:04.10`   \n"
         "Leave blank to skip a distance."
     )
     raw_inputs: dict[int, str] = {}
