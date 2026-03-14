@@ -761,7 +761,7 @@ with tab_zones:
         st.info(
             "⚠️ **Training zones cannot be computed.**\n\n"
             "The Critical Speed model needs **at least 2 performances in the 2–20 minute range** "
-            f"(1500 m, 3000 m, 5000 m or 10,000 m typically fall here). "
+            f"(1500 m, 3000 m, or 5000 m typically fall here). "
             f"You currently have **{_n}** such performance{'s' if _n != 1 else ''} entered — "
             f"please add **{_missing} more** to unlock your training zones."
         )
@@ -818,7 +818,7 @@ with tab_zones:
         _html = """
         <style>
         .zt { width:100%; border-collapse:collapse; font-family:sans-serif; font-size:14px; }
-        .zt th { background:#f0f0f0; padding:9px 14px; text-align:left;
+        .zt th { background:#444444; padding:9px 14px; text-align:left;
                  border-bottom:2px solid #ccc; white-space:nowrap; }
         .zt td { padding:8px 14px; border-bottom:1px solid #ddd; }
         </style>
