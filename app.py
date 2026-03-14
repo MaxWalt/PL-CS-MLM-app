@@ -414,9 +414,9 @@ if any(v is not None for v in wa_pts_user.values()):
 # Tabs
 # ─────────────────────────────────────────────────────────────────────────────
 
-tab_params, tab_preds, tab_plot, tab_pop, tab_consult = st.tabs(
+tab_params, tab_preds, tab_plot, tab_pop, tab_zones, tab_consult = st.tabs(
     ["📊 Parameters", "⏱️ Predictions", "📈 Speed–Duration Profile",
-     "👥 Comparison with Peers", "🔬 Want a Deeper Dive?"]
+     "👥 Comparison with Peers", "🏃 Training Zones", "🔬 Want a Deeper Dive?"]
 )
 
 # ── Tab 1: Parameters ─────────────────────────────────────────────────────────
@@ -750,7 +750,104 @@ with tab_pop:
                 "not the full hierarchical MLM of the original paper."
             )
 
-# ── Tab 5: Deeper dive / consult booking ─────────────────────────────────────
+# ── Tab 5: Training Zones ─────────────────────────────────────────────────────
+with tab_zones:
+    # Need ≥ 2 performances in the 2–20 min validated CS range
+    _cs_valid = {d: t for d, t in inputs.items() if 120 <= t <= 1200}
+
+    if len(_cs_valid) < 2:
+        _n = len(_cs_valid)
+        _missing = 2 - _n
+        st.info(
+            "⚠️ **Training zones cannot be computed.**\n\n"
+            "The Critical Speed model needs **at least 2 performances in the 2–20 minute range** "
+            f"(1500 m, 3000 m, 5000 m or 10,000 m typically fall here). "
+            f"You currently have **{_n}** such performance{'s' if _n != 1 else ''} entered — "
+            f"please add **{_missing} more** to unlock your training zones."
+        )
+    else:
+        CS = cs["CS_kmh"]  # km/h
+
+        # Zone 2 upper boundary varies with CS level (Hunter et al., 2024)
+        if CS <= 12.0:
+            z2_hi = 0.806
+        elif CS <= 14.0:
+            z2_hi = 0.832
+        else:
+            z2_hi = 0.842
+
+        def _pace(speed_kmh: float) -> str:
+            """Format km/h → 'mm:ss' pace per km."""
+            if speed_kmh <= 0:
+                return "—"
+            spk = 3600.0 / speed_kmh
+            return f"{int(spk // 60)}:{spk % 60:04.1f}"
+
+        # Zone definitions: (label, description, lo_frac, hi_frac | None)
+        _zone_defs = [
+            ("Zone 1", "Easy / Recovery",             0.0,    0.70),
+            ("Zone 2", "Aerobic Base",                0.70,   z2_hi),
+            ("Zone 3", "Tempo / Threshold",           z2_hi,  0.92),
+            ("Zone 4", "At & Above Critical Speed",   0.92,   1.05),
+            ("Zone 5", "Speed / Neuromuscular",       1.05,   None),
+        ]
+        _zone_colors = ["#C8E6F5", "#C8EDCD", "#FDF2C0", "#FDE5C4", "#F5C6C2"]
+
+        _rows = []
+        for (zone, desc, lo, hi), color in zip(_zone_defs, _zone_colors):
+            lo_spd = CS * lo
+            hi_spd = CS * hi if hi is not None else None
+
+            if lo == 0.0:
+                spd_str  = f"< {hi_spd:.2f}"
+                pace_str = f"> {_pace(hi_spd)}"
+                pct_str  = f"< {hi * 100:.1f} %"
+            elif hi is None:
+                spd_str  = f"> {lo_spd:.2f}"
+                pace_str = f"< {_pace(lo_spd)}"
+                pct_str  = f"> {lo * 100:.1f} %"
+            else:
+                spd_str  = f"{lo_spd:.2f} – {hi_spd:.2f}"
+                # pace: faster end (hi speed) listed first
+                pace_str = f"{_pace(hi_spd)} – {_pace(lo_spd)}"
+                pct_str  = f"{lo * 100:.1f} – {hi * 100:.1f} %"
+
+            _rows.append((zone, desc, pct_str, spd_str, pace_str, color))
+
+        # Render as a styled HTML table for per-row color control
+        _html = """
+        <style>
+        .zt { width:100%; border-collapse:collapse; font-family:sans-serif; font-size:14px; }
+        .zt th { background:#f0f0f0; padding:9px 14px; text-align:left;
+                 border-bottom:2px solid #ccc; white-space:nowrap; }
+        .zt td { padding:8px 14px; border-bottom:1px solid #ddd; }
+        </style>
+        <table class="zt">
+        <tr>
+          <th>Zone</th>
+          <th>Description</th>
+          <th>% of CS</th>
+          <th>Speed (km/h)</th>
+          <th>Pace (min:ss /km)</th>
+        </tr>
+        """
+        for zone, desc, pct, spd, pace, color in _rows:
+            _html += (
+                f'<tr style="background-color:{color};">'
+                f"<td><b>{zone}</b></td><td>{desc}</td>"
+                f"<td>{pct}</td><td>{spd}</td><td>{pace}</td></tr>"
+            )
+        _html += "</table>"
+
+        st.markdown(_html, unsafe_allow_html=True)
+
+        st.caption(
+            f"CS = **{CS:.2f} km/h** ({cs['CS_ms']:.3f} m/s). "
+            "Zone 2 upper boundary adapted by CS level following "
+            "**Hunter et al. (2024)**."
+        )
+
+# ── Tab 6: Deeper dive / consult booking ─────────────────────────────────────
 with tab_consult:
     st.subheader("Want a Deeper Dive into Your Data?")
     st.markdown(
