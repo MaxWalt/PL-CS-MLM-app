@@ -785,13 +785,13 @@ with tab_zones:
 
         # Zone definitions: (label, description, lo_frac, hi_frac | None)
         _zone_defs = [
-            ("Zone 1", "Easy / Recovery",             0.0,    0.70),
-            ("Zone 2", "Aerobic Base",                0.70,   z2_hi),
-            ("Zone 3", "Tempo / Threshold",           z2_hi,  0.92),
-            ("Zone 4", "At & Above Critical Speed",   0.92,   1.05),
-            ("Zone 5", "Speed / Neuromuscular",       1.05,   None),
+            ("Zone 1", "Easy / Recovery",  0.0,    0.70),
+            ("Zone 2", "Aerobic Base",     0.70,   z2_hi),
+            ("Zone 3", "Tempo",            z2_hi,  0.92),
+            ("Zone 4", "Threshold",        0.92,   1.05),
+            ("Zone 5", "VO₂max",           1.05,   None),
         ]
-        _zone_colors = ["#C8E6F5", "#C8EDCD", "#FDF2C0", "#FDE5C4", "#F5C6C2"]
+        _zone_colors = ["#2980B9", "#27AE60", "#D4AC0D", "#E67E22", "#C0392B"]
 
         _rows = []
         for (zone, desc, lo, hi), color in zip(_zone_defs, _zone_colors):
@@ -833,7 +833,7 @@ with tab_zones:
         """
         for zone, desc, pct, spd, pace, color in _rows:
             _html += (
-                f'<tr style="background-color:{color};">'
+                f'<tr style="background-color:{color}; color:#ffffff;">'
                 f"<td><b>{zone}</b></td><td>{desc}</td>"
                 f"<td>{pct}</td><td>{spd}</td><td>{pace}</td></tr>"
             )
