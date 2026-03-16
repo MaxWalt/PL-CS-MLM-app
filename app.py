@@ -22,6 +22,7 @@ import plotly.graph_objects as go
 from scipy import stats
 import streamlit as st
 import streamlit.components.v1 as components
+from streamlit_autorefresh import st_autorefresh
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Page config
@@ -32,6 +33,9 @@ st.set_page_config(
     page_icon="🏃",
     layout="wide",
 )
+
+# Keep app alive on Streamlit Community Cloud free tier (10-min heartbeat)
+st_autorefresh(interval=600_000, limit=None, key="keepalive")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Constants
