@@ -263,7 +263,7 @@ st.markdown(
     "(where you stand among ~52,000 athletes of the same gender and event specialization).\n\n"
     "> Based on the MLM modeling framework from Walt et al. (2025). *Using Multilevel Models to Compare Performance Prediction "
                "and Characterization Abilities Between Power-Law and Critical-Speed Models in Middle- and Long-Distance Running*. "
-               "International Journal of Sports Physiology and Performance""
+               "International Journal of Sports Physiology and Performance"
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
