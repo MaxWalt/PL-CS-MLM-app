@@ -261,7 +261,9 @@ st.markdown(
     "performance predictions for all standard distances, a "
     "speed–duration profile, and your **comparison with peers** "
     "(where you stand among ~52,000 athletes of the same gender and event specialization).\n\n"
-    "> Based on the MLM modeling framework from Walt et al. (2025)."
+    "> Based on the MLM modeling framework from Walt et al. (2025). *Using Multilevel Models to Compare Performance Prediction "
+               "and Characterization Abilities Between Power-Law and Critical-Speed Models in Middle- and Long-Distance Running*. "
+               "International Journal of Sports Physiology and Performance""
 )
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -303,7 +305,7 @@ with st.sidebar:
     st.divider()
     st.caption("📖 Walt et al. (2025). *Using Multilevel Models to Compare Performance Prediction "
                "and Characterization Abilities Between Power-Law and Critical-Speed Models in Middle- and Long-Distance Running*. "
-               "International Journal of Sports Physiology and Performance, 2024–2025")
+               "International Journal of Sports Physiology and Performance")
 
 # ─────────────────────────────────────────────────────────────────────────────
 # Parse & validate
@@ -442,7 +444,7 @@ with tab_params:
 
                 | Parameter | Interpretation |
                 |-----------|----------------|
-                | **S** | Maximal theoretical speed over 1s: higher = faster athlete |
+                | **S** | Maximal theoretical speed over 1s. S reflects your raw speed ceiling: higher S indicates a more sprint-oriented profile, lower S indicates a more endurance-oriented profile relative to your performance level. |
                 | **E** | Endurance parameter: closer to 1.0 = more endurant athlete |
                 | **b** | Fatigue/decay exponent = 1 − E; higher = speed drops faster with duration |
 
