@@ -385,6 +385,13 @@ if _cs_outside:
         "The CS results may therefore not reflect reality."
     )
 
+if len(inputs) == 2:
+    st.warning(
+        "⚠️ With only **2 performances** entered, model parameters are exactly fitted to your data. "
+        "Predictions outside your entered range are extrapolations and should be interpreted with caution. "
+        "Add more distances for a robust profile."
+    )
+
 # ─────────────────────────────────────────────────────────────────────────────
 # WA points summary bar (shown above tabs)
 # ─────────────────────────────────────────────────────────────────────────────
